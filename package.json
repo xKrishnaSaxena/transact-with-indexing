@@ -3,15 +3,23 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "tsc -b && node dist/index.js",
+    "build": "tsc -b "
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@types/bip39": "^2.4.2",
+    "@types/dotenv": "^6.1.1",
     "@types/express": "^5.0.0",
+    "@types/mongoose": "^5.11.96",
+    "bip39": "^3.1.0",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.13.5",
     "express": "^4.21.2",
+    "mongoose": "^8.9.5",
     "typescript": "^5.7.3"
   }
 }
