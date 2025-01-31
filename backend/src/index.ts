@@ -36,7 +36,7 @@ app.post("/signup", async (req = request, res = response) => {
 app.get("/depositAddress/:userId", async (req = request, res = response) => {
   const { userId } = req.params;
   const user = await User.findById(userId);
-  res.send(user.depositAddress);
+  if (user) res.send(user.depositAddress);
 });
 
 app.listen(3000, () => {
