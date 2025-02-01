@@ -1,13 +1,8 @@
-import { JsonRpcProvider } from "ethers";
+import { formatEther, JsonRpcProvider } from "ethers";
 import axios from "axios";
 import config from "./utils/config";
 import mongoose from "mongoose";
 import User from "./models/user";
-interface Response {
-  jsonrpc: string;
-  id: number;
-  result: string;
-}
 
 const alchemyUrl = config.ALCHEMY_URL;
 
@@ -15,24 +10,53 @@ const provider = new JsonRpcProvider(alchemyUrl);
 
 async function main() {
   await mongoose.connect(config.MONGO_URL, {});
-  const dbAddresses = await User.find().then((users) =>
-    users.map((user) => user.depositAddress)
-  );
 
+  const dbUsers = await User.find(
+    {},
+    { depositAddress: 1, _id: 1, balance: 1 }
+  );
+  const dbAddresses = dbUsers.map((user) => user.depositAddress);
+
+  console.log(dbAddresses);
   const transactions = await getTransactionReceipt();
 
-  const dbTransactions = transactions?.result.filter((x) =>
-    dbAddresses.includes(x.to)
-  );
+  if (!transactions?.result) return;
+
+  const dbTransactions = transactions.result.filter((x) => {
+    return dbAddresses.includes(x.to);
+  });
+  console.log("db Transactions");
+  console.log(dbTransactions);
 
   const fullTxns = await Promise.all(
     dbTransactions.map(async ({ transactionHash }) => {
       const txn = await provider.getTransaction(transactionHash);
+
       return txn;
     })
   );
 
-  console.log(fullTxns);
+  for (const txn of fullTxns) {
+    if (!txn || !txn.to || !txn.value) continue;
+
+    const recipient = txn.to.toLowerCase();
+    const amountInEth = parseFloat(formatEther(txn.value));
+
+    const user = dbUsers.find(
+      (i) => i.depositAddress.toLowerCase() === recipient
+    );
+    if (user) {
+      await User.updateOne(
+        {
+          _id: user._id,
+        },
+        {
+          $inc: { balance: amountInEth },
+        }
+      );
+      console.log(`Updated balance for ${recipient}: +${amountInEth} ETH`);
+    }
+  }
 }
 
 interface TransactionReceipt {
@@ -44,23 +68,23 @@ interface TransactionReceipt {
 interface TransactionReceiptResponse {
   result: TransactionReceipt[];
 }
+interface BlockNumberResponse {
+  result: string;
+}
 
 async function getTransactionReceipt(): Promise<TransactionReceiptResponse> {
-  const response1 = await axios.post(alchemyUrl, {
+  const response1 = await axios.post<BlockNumberResponse>(alchemyUrl, {
     jsonrpc: "2.0",
     id: 1,
     method: "eth_blockNumber",
     params: [],
   });
-  //@ts-ignore
-  const data1: Response = response1.data;
-  console.log(data1.result);
 
   let data = JSON.stringify({
     id: 1,
     jsonrpc: "2.0",
     method: "eth_getBlockReceipts",
-    params: [`${data1.result}`],
+    params: [`${response1.data.result}`],
   });
 
   let config = {
