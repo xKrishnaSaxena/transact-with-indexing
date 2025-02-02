@@ -10,6 +10,7 @@
 
 - [x] get the deposit address from the db
 - [x] index the eth blocks for the transaction history of the deposit addresses
+- [x] keep polling the blockchain for new blocks
 - [x] update the balances ->
 
   - [x] approach 1
